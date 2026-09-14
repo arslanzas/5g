@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from 'next-sanity'
 
 const client = createClient({
@@ -31,9 +33,9 @@ export default async function HomePage() {
 
       <section>
         <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '10px' }}>Latest Devices</h2>
-        
+
         {phones.length === 0 ? (
-          <p>No phones added yet. Add one in <a href="/studio">the Studio</a>!</p>
+          <p>No phones found. Make sure your phone document is published in <a href="/studio">the Studio</a>.</p>
         ) : (
           <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', marginTop: '20px' }}>
             {phones.map((phone) => (

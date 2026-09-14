@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from 'next-sanity'
+import Link from 'next/link'
 
 const client = createClient({
   projectId: 'e1h3j61w',
@@ -12,66 +13,119 @@ const client = createClient({
 interface Phone {
   _id: string
   title: string
-  price: number
-  has5G: boolean
+  slug?: { current: string }
+  price?: number
+  has5G?: boolean
+  ptaApproved?: boolean
+  imageUrl?: string
 }
 
 export default async function HomePage() {
   const phones: Phone[] = await client.fetch(
-    `*[_type == "phone"]{ _id, title, price, has5G }`
+    `*[_type == "phone"]{
+      _id,
+      title,
+      slug,
+      price,
+      has5G,
+      ptaApproved,
+      "imageUrl": image.asset->url
+    }`
   )
 
   return (
-    <main style={{ maxWidth: '800px', margin: '40px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
-      <header style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '8px' }}>5gmobile.pk</h1>
-        <p style={{ color: '#666' }}>Pakistan's 5G Smartphone Directory</p>
-        <a href="/studio" style={{ color: '#0066cc', fontSize: '0.9rem' }}>
-          Go to Admin Studio &rarr;
-        </a>
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* Top Header */}
+      <header style={{ backgroundColor: '#0f172a', color: '#fff', padding: '16px 20px', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
+              5G<span style={{ color: '#10b981' }}>Mobile</span>.pk
+            </h1>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>Pakistan's 5G Smartphone Hub</p>
+          </div>
+          <Link href="/studio" style={{ color: '#38bdf8', fontSize: '0.8rem', textDecoration: 'none', border: '1px solid #1e293b', padding: '6px 12px', borderRadius: '6px' }}>
+            Admin Studio &rarr;
+          </Link>
+        </div>
       </header>
 
-      <section>
-        <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '10px' }}>Latest Devices</h2>
+      {/* Main Grid */}
+      <main style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 16px 80px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>Latest 5G & 4G Mobiles</h2>
+          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{phones.length} Devices</span>
+        </div>
 
-        {phones.length === 0 ? (
-          <p>No phones found. Make sure your phone document is published in <a href="/studio">the Studio</a>.</p>
-        ) : (
-          <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', marginTop: '20px' }}>
-            {phones.map((phone) => (
-              <div
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+          {phones.map((phone) => {
+            const phoneUrl = phone.slug?.current ? `/phone/${phone.slug.current}` : '#'
+            return (
+              <Link
                 key={phone._id}
-                style={{
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  backgroundColor: '#fff',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}
+                href={phoneUrl}
+                style={{ textDecoration: 'none', color: 'inherit' }}
               >
-                <h3 style={{ margin: '0 0 10px 0' }}>{phone.title}</h3>
-                <p style={{ margin: '4px 0', fontSize: '1.1rem', fontWeight: 'bold', color: '#111' }}>
-                  Rs. {phone.price ? phone.price.toLocaleString() : 'N/A'}
-                </p>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    marginTop: '8px',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    backgroundColor: phone.has5G ? '#e6f4ea' : '#fce8e6',
-                    color: phone.has5G ? '#137333' : '#c5221f',
-                  }}
-                >
-                  {phone.has5G ? '5G Ready' : '4G Only'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </main>
+                <div style={{
+                  backgroundColor: '#fff',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: '100%',
+                  boxSizing: 'border-box'
+                }}>
+                  {/* Image Frame */}
+                  <div style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', borderRadius: '8px', overflow: 'hidden', marginBottom: '10px' }}>
+                    {phone.imageUrl ? (
+                      <img
+                        src={phone.imageUrl}
+                        alt={phone.title}
+                        style={{ maxHeight: '130px', maxWidth: '90%', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No Photo</span>
+                    )}
+                  </div>
+
+                  {/* Title & Price */}
+                  <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', margin: '0 0 6px', lineHeight: 1.3 }}>
+                    {phone.title}
+                  </h3>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0284c7', margin: '0 0 8px' }}>
+                    {phone.price ? `Rs. ${phone.price.toLocaleString()}` : 'Coming Soon'}
+                  </div>
+
+                  {/* Badges */}
+                  <div style={{ marginTop: 'auto', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      backgroundColor: phone.has5G ? '#dcfce7' : '#f1f5f9',
+                      color: phone.has5G ? '#15803d' : '#475569'
+                    }}>
+                      {phone.has5G ? '5G' : '4G'}
+                    </span>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      backgroundColor: phone.ptaApproved ? '#e0f2fe' : '#fee2e2',
+                      color: phone.ptaApproved ? '#0369a1' : '#b91c1c'
+                    }}>
+                      {phone.ptaApproved ? 'PTA Approved' : 'Non-PTA'}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </main>
+    </div>
   )
 }

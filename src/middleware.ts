@@ -3,8 +3,26 @@ import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const previewParam = request.nextUrl.searchParams.get('preview')
+  const previewCookie = request.cookies.get('admin_preview')?.value
 
-  // 1. Allow unrestricted access to Sanity Studio and internal assets
+  // 1. If you visit with the secret link, unlock the site and set a 7-day cookie
+  if (previewParam === 'admin123') {
+    const response = NextResponse.redirect(new URL('/', request.url))
+    response.cookies.set('admin_preview', 'active', {
+      path: '/',
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 7, // Stays unlocked for 7 days
+    })
+    return response
+  }
+
+  // 2. If your browser already holds the secret cookie, let you view the live site
+  if (previewCookie === 'active') {
+    return NextResponse.next()
+  }
+
+  // 3. Allow unrestricted access to Sanity Studio and internal assets
   if (
     pathname.startsWith('/studio') ||
     pathname.startsWith('/_next') ||
@@ -14,7 +32,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 2. Serve a modern Maintenance Page with HTTP 503 (SEO-safe)
+  // 4. Serve the Maintenance Page with HTTP 503 to the public
   return new NextResponse(
     `<!DOCTYPE html>
 <html lang="en">
@@ -75,9 +93,6 @@ export function middleware(request: NextRequest) {
       color: #334155;
       text-decoration: none;
       font-size: 0.75rem;
-    }
-    .studio-link:hover {
-      color: #64748b;
     }
   </style>
 </head>

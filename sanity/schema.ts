@@ -1,73 +1,68 @@
-import { defineType, defineField, defineArrayMember } from 'sanity'
+export const schema = {
+  types: [
+    {
+      name: 'phone',
+      title: 'Phone Model',
+      type: 'document',
+      groups: [
+        { name: 'general', title: 'General & Design' },
+        { name: 'display', title: 'Display Specs' },
+        { name: 'performance', title: 'Core & Storage' },
+        { name: 'camera', title: 'Cameras' },
+        { name: 'network', title: 'Connectivity' },
+        { name: 'media', title: 'Images Gallery' }
+      ],
+      fields: [
+        // --- GENERAL ---
+        { name: 'title', title: 'Phone Name', type: 'string', group: 'general' },
+        { name: 'slug', title: 'URL Slug', type: 'slug', options: { source: 'title' }, group: 'general' },
+        { name: 'price', title: 'Price in PKR', type: 'number', group: 'general' },
+        { name: 'launchDate', title: 'Market Debut (Release Date)', type: 'string', group: 'general' },
+        { name: 'simConfig', title: 'SIM Configuration', type: 'string', group: 'general' },
+        { name: 'dimensions', title: 'Device Proportions', type: 'string', group: 'general' },
+        { name: 'weight', title: 'Device Mass', type: 'string', group: 'general' },
+        { name: 'software', title: 'Software Platform (OS)', type: 'string', group: 'general' },
 
-export default defineType({
-  name: 'phone',
-  title: 'Mobile Phone',
-  type: 'document',
-  // 1. We define groups to create clean tabs in the Sanity Admin panel
-  groups: [
-    { name: 'general', title: 'General & Design' },
-    { name: 'display', title: 'Display Specs' },
-    { name: 'hardware', title: 'Hardware & Battery' },
-    { name: 'camera', title: 'Cameras' },
-    { name: 'connectivity', title: 'Network & Connectivity' },
-    { name: 'media', title: 'Gallery' },
-  ],
-  fields: [
-    // --- GENERAL & DESIGN ---
-    defineField({ name: 'title', title: 'Device Name', type: 'string', group: 'general' }),
-    defineField({ name: 'slug', title: 'URL Slug', type: 'slug', options: { source: 'title' }, group: 'general' }),
-    defineField({ name: 'launchDate', title: 'Launch Date', type: 'string', group: 'general' }),
-    defineField({ name: 'simConfig', title: 'SIM Configuration', type: 'string', group: 'general' }),
-    defineField({ name: 'dimensions', title: 'Device Dimensions', type: 'string', group: 'general' }),
-    defineField({ name: 'weight', title: 'Device Weight', type: 'string', group: 'general' }),
-    defineField({ name: 'osVersion', title: 'OS Version', type: 'string', group: 'general' }),
+        // --- DISPLAY ---
+        { name: 'displayDiagonal', title: 'Display Diagonal (Size)', type: 'string', group: 'display' },
+        { name: 'resolution', title: 'Screen Resolution', type: 'string', group: 'display' },
+        { name: 'panelTech', title: 'Panel Technology (Type)', type: 'string', group: 'display' },
+        { name: 'glassShield', title: 'Glass Shield Protection', type: 'string', group: 'display' },
 
-    // --- DISPLAY ---
-    defineField({ name: 'displaySize', title: 'Display Size', type: 'string', group: 'display' }),
-    defineField({ name: 'resolution', title: 'Screen Resolution', type: 'string', group: 'display' }),
-    defineField({ name: 'displayTech', title: 'Display Tech (Type)', type: 'string', group: 'display' }),
-    defineField({ name: 'glassProtection', title: 'Glass Protection', type: 'string', group: 'display' }),
+        // --- PERFORMANCE ---
+        { name: 'builtInStorage', title: 'Built-in Storage (ROM)', type: 'string', group: 'performance' },
+        { name: 'systemMemory', title: 'System Memory (RAM)', type: 'string', group: 'performance' },
+        { name: 'expandableStorage', title: 'Expandable Storage (SD Card)', type: 'string', group: 'performance' },
+        { name: 'cpu', title: 'Chipset / CPU', type: 'string', group: 'performance' },
+        { name: 'graphics', title: 'Graphics Processor (GPU)', type: 'string', group: 'performance' },
+        { name: 'batteryCapacity', title: 'Battery Capacity', type: 'string', group: 'performance' },
 
-    // --- HARDWARE & MEMORY ---
-    defineField({ name: 'storageCapacity', title: 'Storage Capacity (ROM)', type: 'string', group: 'hardware' }),
-    defineField({ name: 'systemMemory', title: 'System Memory (RAM)', type: 'string', group: 'hardware' }),
-    defineField({ name: 'expandableStorage', title: 'Expandable Storage', type: 'string', group: 'hardware' }),
-    defineField({ name: 'chipset', title: 'Chipset (Processor)', type: 'string', group: 'hardware' }),
-    defineField({ name: 'graphics', title: 'Graphics (GPU)', type: 'string', group: 'hardware' }),
-    defineField({ name: 'batteryCapacity', title: 'Battery Capacity', type: 'string', group: 'hardware' }),
+        // --- CAMERAS ---
+        { name: 'primaryCamera', title: 'Primary Camera Array', type: 'string', group: 'camera' },
+        { name: 'mainFlash', title: 'Main Flash Illumination', type: 'boolean', group: 'camera' },
+        { name: 'mainVideo', title: 'Main Video Capture', type: 'string', group: 'camera' },
+        { name: 'selfieLens', title: 'Selfie Lens', type: 'string', group: 'camera' },
+        { name: 'selfieFlash', title: 'Selfie Illumination', type: 'boolean', group: 'camera' },
+        { name: 'selfieVideo', title: 'Selfie Video Capture', type: 'string', group: 'camera' },
 
-    // --- CAMERAS ---
-    defineField({ name: 'mainCameraSetup', title: 'Main Camera Setup', type: 'string', group: 'camera' }),
-    defineField({ name: 'backVideo', title: 'Main Video Recording', type: 'string', group: 'camera' }),
-    defineField({ name: 'backFlash', title: 'Main Flash Light', type: 'boolean', group: 'camera' }),
-    
-    defineField({ name: 'selfieCamera', title: 'Selfie Camera', type: 'string', group: 'camera' }),
-    defineField({ name: 'frontVideo', title: 'Selfie Video Recording', type: 'string', group: 'camera' }),
-    defineField({ name: 'frontFlash', title: 'Selfie Flash Light', type: 'boolean', group: 'camera' }),
+        // --- CONNECTIVITY ---
+        { name: 'has5G', title: 'Supports 5G?', type: 'boolean', group: 'network' },
+        { name: 'has4G', title: 'Supports 4G/LTE?', type: 'boolean', group: 'network' },
+        { name: 'has3G', title: 'Supports 3G?', type: 'boolean', group: 'network' },
+        { name: 'wifi', title: 'Wi-Fi Connectivity', type: 'string', group: 'network' },
+        { name: 'bluetooth', title: 'Bluetooth Version', type: 'string', group: 'network' },
+        { name: 'nfc', title: 'NFC Support', type: 'boolean', group: 'network' },
+        { name: 'radio', title: 'FM Radio', type: 'boolean', group: 'network' },
 
-    // --- CONNECTIVITY ---
-    defineField({ name: 'has5G', title: '5G Network Support', type: 'boolean', group: 'connectivity' }),
-    defineField({ name: 'has4G', title: '4G/LTE Support', type: 'boolean', group: 'connectivity' }),
-    defineField({ name: 'has3G', title: '3G Support', type: 'boolean', group: 'connectivity' }),
-    defineField({ name: 'wifi', title: 'WiFi Features', type: 'string', group: 'connectivity' }),
-    defineField({ name: 'bluetooth', title: 'Bluetooth Version', type: 'string', group: 'connectivity' }),
-    defineField({ name: 'nfc', title: 'NFC Support', type: 'boolean', group: 'connectivity' }),
-    defineField({ name: 'radio', title: 'FM Radio', type: 'boolean', group: 'connectivity' }),
-
-    // --- MEDIA / GALLERY ---
-    // 2. This array allows you to upload multiple images (front, back, side angles)
-    defineField({
-      name: 'gallery',
-      title: 'Phone Gallery',
-      type: 'array',
-      group: 'media',
-      of: [
-        defineArrayMember({
-          type: 'image',
-          options: { hotspot: true } // Hotspot allows you to crop images directly in Sanity
-        })
+        // --- MEDIA ---
+        {
+          name: 'images',
+          title: 'Phone Gallery',
+          type: 'array',
+          group: 'media',
+          of: [{ type: 'image', options: { hotspot: true } }]
+        }
       ]
-    }),
-  ],
-})
+    }
+  ]
+}

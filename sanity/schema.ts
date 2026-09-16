@@ -66,3 +66,64 @@ export const schema = {
     }
   ]
 }
+export const schema = {
+  types: [
+    // ... (Keep your existing 'phone' schema here) ...
+
+    // --- 1. NEWS SCHEMA ---
+    {
+      name: 'news',
+      title: '5G News',
+      type: 'document',
+      fields: [
+        { name: 'title', title: 'Headline', type: 'string' },
+        { name: 'slug', title: 'URL Slug', type: 'slug', options: { source: 'title' } },
+        { name: 'isFeatured', title: 'Feature on Homepage?', type: 'boolean', description: 'Turn on to push this to the bottom Featured slider.' },
+        { name: 'publishedAt', title: 'Publish Date', type: 'datetime' },
+        { name: 'snippet', title: 'Short Snippet (1-2 lines)', type: 'text' },
+        { name: 'content', title: 'Full Article Content', type: 'array', of: [{ type: 'block' }] }
+      ]
+    },
+
+    // --- 2. BLOG SCHEMA ---
+    {
+      name: 'blog',
+      title: 'Mobile Guides & Blogs',
+      type: 'document',
+      fields: [
+        { name: 'title', title: 'Blog Title', type: 'string' },
+        { name: 'slug', title: 'URL Slug', type: 'slug', options: { source: 'title' } },
+        { name: 'category', title: 'Category Badge', type: 'string', description: 'e.g., Mobile Guide, PTA Tax, Comparison' },
+        { name: 'featuredImage', title: 'Cover Image', type: 'image', options: { hotspot: true } },
+        { name: 'excerpt', title: 'Short Excerpt', type: 'text' },
+        { name: 'readTime', title: 'Reading Time (e.g., 4 min read)', type: 'string' },
+        { name: 'content', title: 'Full Blog Content', type: 'array', of: [{ type: 'block' }] }
+      ]
+    },
+
+    // --- 3. BRAND SCHEMA ---
+    {
+      name: 'brand',
+      title: 'Mobile Brands',
+      type: 'document',
+      fields: [
+        { name: 'name', title: 'Brand Name', type: 'string' },
+        { name: 'slug', title: 'Brand URL Slug', type: 'slug', options: { source: 'name' } },
+        { name: 'logo', title: 'Brand Logo (SVG or PNG)', type: 'image', options: { hotspot: true } }
+      ]
+    },
+
+    // --- 4. ALERT BANNER SCHEMA ---
+    {
+      name: 'banner',
+      title: 'Promo / Alert Banner',
+      type: 'document',
+      fields: [
+        { name: 'title', title: 'Internal Title (e.g., Ramadan Sale)', type: 'string' },
+        { name: 'alertText', title: 'Banner Text', type: 'string' },
+        { name: 'linkUrl', title: 'Clickable URL', type: 'url' },
+        { name: 'isActive', title: 'Banner Active?', type: 'boolean', description: 'Turn on to display this banner at the top of the website.' }
+      ]
+    }
+  ]
+}

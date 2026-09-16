@@ -1,6 +1,6 @@
 export const schema = {
   types: [
-    // --- 1. PHONE SCHEMA (Your existing one, kept safe) ---
+    // --- 1. PHONE SCHEMA (Kept exactly the same so your homepage doesn't break) ---
     {
       name: 'phone',
       title: 'Phone Model',
@@ -56,7 +56,7 @@ export const schema = {
       ]
     },
 
-    // --- 2. NEWS SCHEMA ---
+    // --- 2. NEWS SCHEMA (Updated with Photos) ---
     {
       name: 'news',
       title: '5G News',
@@ -66,12 +66,21 @@ export const schema = {
         { name: 'slug', title: 'URL Slug', type: 'slug', options: { source: 'title' } },
         { name: 'isFeatured', title: 'Feature on Homepage?', type: 'boolean' },
         { name: 'publishedAt', title: 'Publish Date', type: 'datetime' },
+        { name: 'mainImage', title: 'News Cover Image', type: 'image', options: { hotspot: true } },
         { name: 'snippet', title: 'Short Snippet (1-2 lines)', type: 'text' },
-        { name: 'content', title: 'Full Article Content', type: 'array', of: [{ type: 'block' }] }
+        { 
+          name: 'content', 
+          title: 'Full Article Content', 
+          type: 'array', 
+          of: [
+            { type: 'block' },
+            { type: 'image', options: { hotspot: true }, title: 'Inline Photo' } // Allows photos inside the article
+          ] 
+        }
       ]
     },
 
-    // --- 3. BLOG SCHEMA ---
+    // --- 3. BLOG SCHEMA (Updated with Inline Photos) ---
     {
       name: 'blog',
       title: 'Mobile Guides & Blogs',
@@ -83,7 +92,15 @@ export const schema = {
         { name: 'featuredImage', title: 'Cover Image', type: 'image', options: { hotspot: true } },
         { name: 'excerpt', title: 'Short Excerpt', type: 'text' },
         { name: 'readTime', title: 'Reading Time', type: 'string' },
-        { name: 'content', title: 'Full Blog Content', type: 'array', of: [{ type: 'block' }] }
+        { 
+          name: 'content', 
+          title: 'Full Blog Content', 
+          type: 'array', 
+          of: [
+            { type: 'block' },
+            { type: 'image', options: { hotspot: true }, title: 'Inline Photo' } // Allows photos inside the blog post
+          ] 
+        }
       ]
     },
 

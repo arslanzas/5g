@@ -39,17 +39,27 @@ const BRANDS = [
 ]
 
 export default async function HomePage() {
-  const phones: Phone[] = await client.fetch(
-    `*[_type == "phone"] | order(_createdAt desc)[0...30] {
-      _id,
-      title,
-      slug,
-      price,
-      has5G,
-      ptaApproved,
-      "imageUrl": image.asset->url
-    }`
-  )
+  let phones: Phone[] = []
+  
+  // Bullet-proof data fetching to prevent 500 errors
+  try {
+    const data = await client.fetch(
+      `*[_type == "phone"] | order(_createdAt desc)[0...30] {
+        _id,
+        title,
+        slug,
+        price,
+        has5G,
+        ptaApproved,
+        "imageUrl": coalesce(images[0].asset->url, image.asset->url)
+      }`
+    )
+    if (Array.isArray(data)) {
+      phones = data
+    }
+  } catch (error) {
+    console.error("Sanity fetch failed:", error)
+  }
 
   return (
     <div style={{ backgroundColor: '#F8FAFC', minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#0F172A', overflowX: 'hidden', width: '100%', maxWidth: '100vw' }}>
@@ -199,7 +209,7 @@ export default async function HomePage() {
           
           {phones.length === 0 ? (
             <div style={{ padding: '24px', textAlign: 'center', backgroundColor: '#FFF', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-              <p style={{ color: '#64748B', margin: 0 }}>No phones found in database.</p>
+              <p style={{ color: '#64748B', margin: 0 }}>No phones found or failed to load. Please try again later.</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
@@ -284,10 +294,7 @@ export default async function HomePage() {
             Best 5G Mobile in Pakistan
           </h2>
           <p>
-            Welcome to <strong>5gmobile.pk</strong>, Pakistan's dedicated smartphone portal. Finding the right mobile phone in Pakistan can be tricky due to currency fluctuations, import duties, and PTA taxes across major markets in Lahore (Hafeez Center), Karachi (Saddar), and Islamabad. We provide accurate hardware specifications, authentic review benchmarks, and daily updated retail rates.
-          </p>
-          <p>
-            Upgrading to a 5G-ready device is the smartest decision for longevity and speed. With fifth-generation mobile connectivity, users can experience multi-gigabit transfer speeds and ultra-low latency.
+            Welcome to <strong>5gmobile.pk</strong>, Pakistan's dedicated smartphone portal. Finding the right mobile phone in Pakistan can be tricky due to currency fluctuations, import duties, and PTA taxes across major markets. We provide accurate hardware specifications, authentic review benchmarks, and daily updated retail rates.
           </p>
 
           <h2 style={{ fontSize: '1.25rem', color: '#0F172A', marginTop: '24px', marginBottom: '12px', fontWeight: 800 }}>

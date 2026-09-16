@@ -117,7 +117,7 @@ function RenderPortableText({ content }: { content?: ContentBlock[] }) {
             <blockquote key={block._key} style={{ borderLeft: '4px solid #10B981', paddingLeft: '14px', margin: '16px 0', fontStyle: 'italic', color: '#475569' }}>
               {text}
             </blockquote>
-          }
+          ) // <--- This was the typo that broke the build!
         }
 
         return <p key={block._key} style={{ marginBottom: '16px' }}>{text}</p>

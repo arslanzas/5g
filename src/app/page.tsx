@@ -93,7 +93,7 @@ export default async function HomePage() {
   
   try {
     const data = await client.fetch(`{
-      "phones": *[_type == "phone"] | order(_createdAt desc)[0...30] {
+      "phones": *[_type == "phone"] | order(_createdAt desc)[0...100] {
         _id,
         title,
         slug,

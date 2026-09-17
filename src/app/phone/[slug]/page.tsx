@@ -491,54 +491,7 @@ export default async function PhoneDetailPage({ params }: { params: { slug: stri
           </div>
         </section>
 
-        {/* PROS & CONS BOX */}
-        {((phone.pros && phone.pros.length > 0) || (phone.cons && phone.cons.length > 0)) && (
-          <section style={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px 16px', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', margin: '0 0 14px' }}>
-              Why Buy or Skip {phone.title}?
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-              
-              {/* Pros */}
-              <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: '8px', padding: '14px' }}>
-                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#166534', marginBottom: '10px' }}>✓ Reasons to Buy (Pros)</div>
-                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.85rem', color: '#15803D', lineHeight: 1.6 }}>
-                  {phone.pros?.map((pro, idx) => (
-                    <li key={idx} style={{ marginBottom: '6px' }}>{pro}</li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Cons */}
-              <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: '8px', padding: '14px' }}>
-                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#991B1B', marginBottom: '10px' }}>✕ Reasons to Skip (Cons)</div>
-                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.85rem', color: '#B91C1C', lineHeight: 1.6 }}>
-                  {phone.cons?.map((con, idx) => (
-                    <li key={idx} style={{ marginBottom: '6px' }}>{con}</li>
-                  ))}
-                </ul>
-              </div>
-
-            </div>
-          </section>
-        )}
-
-        {/* OUR VERDICT (Rich Text Editor Content) */}
-        {phone.verdict && phone.verdict.length > 0 && (
-          <section style={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px 16px', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <span style={{ backgroundColor: '#10B981', color: '#FFF', padding: '4px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 800 }}>
-                EXPERT REVIEW
-              </span>
-              <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
-                Our Verdict on {phone.title}
-              </h2>
-            </div>
-            <RenderVerdictText content={phone.verdict} />
-          </section>
-        )}
-
-        {/* DETAILED SPECIFICATIONS TABLES */}
+        {/* DETAILED SPECIFICATIONS TABLES (Moved UP) */}
         <section style={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px 16px', marginBottom: '28px' }}>
           <h2 style={{ fontSize: '1.3rem', fontWeight: 900, color: '#0F172A', margin: '0 0 16px' }}>
             {phone.title} Full Specifications
@@ -606,6 +559,53 @@ export default async function PhoneDetailPage({ params }: { params: { slug: stri
             </tbody>
           </table>
         </section>
+
+        {/* PROS & CONS BOX (Moved DOWN) */}
+        {((phone.pros && phone.pros.length > 0) || (phone.cons && phone.cons.length > 0)) && (
+          <section style={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px 16px', marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', margin: '0 0 14px' }}>
+              Why Buy or Skip {phone.title}?
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+              
+              {/* Pros */}
+              <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: '8px', padding: '14px' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#166534', marginBottom: '10px' }}>✓ Reasons to Buy (Pros)</div>
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.85rem', color: '#15803D', lineHeight: 1.6 }}>
+                  {phone.pros?.map((pro, idx) => (
+                    <li key={idx} style={{ marginBottom: '6px' }}>{pro}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Cons */}
+              <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: '8px', padding: '14px' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#991B1B', marginBottom: '10px' }}>✕ Reasons to Skip (Cons)</div>
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.85rem', color: '#B91C1C', lineHeight: 1.6 }}>
+                  {phone.cons?.map((con, idx) => (
+                    <li key={idx} style={{ marginBottom: '6px' }}>{con}</li>
+                  ))}
+                </ul>
+              </div>
+
+            </div>
+          </section>
+        )}
+
+        {/* OUR VERDICT (Rich Text Editor Content) (Moved DOWN) */}
+        {phone.verdict && phone.verdict.length > 0 && (
+          <section style={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px 16px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ backgroundColor: '#10B981', color: '#FFF', padding: '4px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 800 }}>
+                EXPERT REVIEW
+              </span>
+              <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                Our Verdict on {phone.title}
+              </h2>
+            </div>
+            <RenderVerdictText content={phone.verdict} />
+          </section>
+        )}
 
         {/* LATEST PHONES FROM THIS BRAND */}
         {sameBrandPhones.length > 0 && (

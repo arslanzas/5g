@@ -12,13 +12,20 @@ const client = createClient({
   useCdn: false,
 })
 
-// Dynamic SEO Metadata for Google Discover & Search
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+// Universal params handler for Next.js build stability on Hostinger
+interface PageProps {
+  params: Promise<{ slug: string }> | { slug: string }
+}
+
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params
+  const slug = params?.slug
+
   const data = await client.fetch(`*[_type == "news" && slug.current == $slug][0]{
     title,
     snippet,
     "imageUrl": coalesce(mainImage.asset->url, content[_type == "image"][0].asset->url)
-  }`, { slug: params.slug })
+  }`, { slug })
 
   if (!data) return {}
 
@@ -85,14 +92,17 @@ const DEFAULT_BRANDS = [
   { name: 'Realme', slug: 'realme', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/realme.svg' },
   { name: 'Infinix', slug: 'infinix', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e0/Infinix_wordmark.svg' },
   { name: 'Tecno', slug: 'tecno', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Tecno_Mobile_logo.svg' },
+  { name: 'Pixel', slug: 'google-pixel', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/google.svg' },
+  { name: 'Nothing', slug: 'nothing', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/nothing.svg' },
 ]
 
-// Smart Inline Auto-Linker: Converts matching keywords in news text into clickable hyperlinks
+// Safe Inline Auto-Linker for News Text
 function renderTextWithLinks(text: string, linksMap: { keyword: string; url: string }[]) {
-  if (!linksMap || linksMap.length === 0) return text
+  if (!text || !linksMap || linksMap.length === 0) return text
 
   const sortedLinks = [...linksMap].sort((a, b) => b.keyword.length - a.keyword.length)
-  const escapedKeywords = sortedLinks.map(l => l.keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
+  const uniqueKeywords = Array.from(new Set(sortedLinks.map(l => l.keyword)))
+  const escapedKeywords = uniqueKeywords.map(k => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
   
   if (escapedKeywords.length === 0) return text
 
@@ -112,7 +122,6 @@ function renderTextWithLinks(text: string, linksMap: { keyword: string; url: str
   })
 }
 
-// Portable Text Renderer with Inline Auto-Linking
 function RenderPortableText({ content, linksMap }: { content?: ContentBlock[]; linksMap: { keyword: string; url: string }[] }) {
   if (!content || !Array.isArray(content)) return null
 
@@ -150,8 +159,10 @@ function RenderPortableText({ content, linksMap }: { content?: ContentBlock[]; l
   )
 }
 
-export default async function NewsDetailPage({ params }: { params: { slug: string } }) {
-  // Fetch news, all phones (for dictionary), top phones, and brands
+export default async function NewsDetailPage(props: PageProps) {
+  const params = await props.params
+  const slug = params?.slug
+
   const data = await client.fetch(`{
     "news": *[_type == "news" && slug.current == $slug][0] {
       _id,
@@ -182,7 +193,7 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
       slug,
       "logoUrl": logo.asset->url
     }
-  }`, { slug: params.slug })
+  }`, { slug })
 
   const news: NewsArticle | null = data?.news || null
   const topPhones: Phone[] = data?.topPhones || []
@@ -192,9 +203,8 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
     notFound()
   }
 
-  // Build the inline auto-link dictionary
+  // Build dictionary for smart inline linking
   const linksMap: { keyword: string; url: string }[] = []
-
   if (data?.allPhones) {
     data.allPhones.forEach((p: any) => {
       if (p.title && p.slug?.current) {
@@ -244,6 +254,7 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
           <label htmlFor="nav-toggle" style={{ color: '#FFF', fontSize: '2rem', cursor: 'pointer', lineHeight: 1 }}>&times;</label>
         </div>
         <Link href="/" className="sidebar-link">Home</Link>
+        <Link href="/brands" className="sidebar-link">All Brands</Link>
         <Link href="/brand/samsung" className="sidebar-link">Samsung Phones</Link>
         <Link href="/brand/apple" className="sidebar-link">Apple iPhones</Link>
         <Link href="/brand/vivo" className="sidebar-link">Vivo Mobiles</Link>

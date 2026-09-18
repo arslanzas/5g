@@ -424,7 +424,7 @@ export default async function PhoneDetailPage({ params }: { params: { slug: stri
 
                 {phone.marketPrice && (
                   <div style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '12px 14px' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase' }}>Estimated Market Rate</div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase' }}>Lowest Market Rate</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#2563EB', marginTop: '4px' }}>
                       Rs. {phone.marketPrice.toLocaleString()}
                     </div>

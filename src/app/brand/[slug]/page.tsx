@@ -12,218 +12,63 @@ const client = createClient({
   useCdn: false,
 })
 
-// Dynamic SEO Metadata for Google Discover & Search
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const data = await client.fetch(`*[_type == "blog" && slug.current == $slug][0]{
-    title,
-    excerpt,
-    "imageUrl": coalesce(featuredImage.asset->url, content[_type == "image"][0].asset->url)
-  }`, { slug: params.slug })
+interface PageProps {
+  params: Promise<{ slug: string }> | { slug: string }
+}
 
-  if (!data) return {}
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params
+  const slug = params?.slug
 
   return {
-    title: `${data.title} | 5gmobile.pk`,
-    description: data.excerpt,
-    robots: {
-      index: true,
-      follow: true,
-      'max-image-preview': 'large',
-    },
-    openGraph: {
-      images: data.imageUrl ? [{ url: data.imageUrl }] : [],
-    }
+    title: `Latest ${slug?.toUpperCase() || '5G'} Mobile Prices in Pakistan | 5gmobile.pk`,
+    description: `Explore official prices, specifications, and PTA approval status for all ${slug || '5G'} smartphones in Pakistan.`,
+    robots: { index: true, follow: true },
   }
 }
 
-interface BlockChild {
-  _key: string
-  _type: string
-  text?: string
-  marks?: string[]
-}
-
-interface ContentBlock {
-  _key: string
-  _type: string
-  style?: string
-  children?: BlockChild[]
-  asset?: { url: string }
-}
-
-interface BlogArticle {
-  _id: string
-  title: string
-  category?: string
-  readTime?: string
-  excerpt?: string
-  imageUrl?: string
-  _createdAt: string
-  content?: ContentBlock[]
-}
-
-interface Phone {
+interface PhoneItem {
   _id: string
   title: string
   slug?: { current: string }
   price?: number
   has5G?: boolean
+  ptaApproved?: boolean
   imageUrl?: string
 }
 
-interface BrandItem {
-  name: string
-  slug?: { current?: string } | string
-  logoUrl?: string
-}
+export default async function BrandArchivePage(props: PageProps) {
+  const params = await props.params
+  const slug = params?.slug
 
-const DEFAULT_BRANDS = [
-  { name: 'Samsung', slug: 'samsung', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/samsung.svg' },
-  { name: 'Apple', slug: 'apple', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/apple.svg' },
-  { name: 'Xiaomi', slug: 'xiaomi', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/xiaomi.svg' },
-  { name: 'Vivo', slug: 'vivo', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/vivo.svg' },
-  { name: 'Oppo', slug: 'oppo', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/oppo.svg' },
-  { name: 'Realme', slug: 'realme', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/realme.svg' },
-  { name: 'Infinix', slug: 'infinix', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e0/Infinix_wordmark.svg' },
-  { name: 'Tecno', slug: 'tecno', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Tecno_Mobile_logo.svg' },
-]
+  let phones: PhoneItem[] = []
+  let brandName = slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : 'Brand'
 
-// Smart Inline Auto-Linker: Converts matching keywords in paragraph text into clickable hyperlinks
-function renderTextWithLinks(text: string, linksMap: { keyword: string; url: string }[]) {
-  if (!linksMap || linksMap.length === 0) return text
-
-  // Sort keywords by length descending to match longest phrases first
-  const sortedLinks = [...linksMap].sort((a, b) => b.keyword.length - a.keyword.length)
-  const escapedKeywords = sortedLinks.map(l => l.keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
-  
-  if (escapedKeywords.length === 0) return text
-
-  const regex = new RegExp(`(${escapedKeywords.join('|')})`, 'gi')
-  const parts = text.split(regex)
-
-  return parts.map((part, i) => {
-    const matchedLink = sortedLinks.find(l => l.keyword.toLowerCase() === part.toLowerCase())
-    if (matchedLink) {
-      return (
-        <Link key={i} href={matchedLink.url} style={{ color: '#0284C7', fontWeight: 600, textDecoration: 'underline' }}>
-          {part}
-        </Link>
-      )
-    }
-    return part
-  })
-}
-
-// Portable Text Renderer with Inline Auto-Linking
-function RenderPortableText({ content, linksMap }: { content?: ContentBlock[]; linksMap: { keyword: string; url: string }[] }) {
-  if (!content || !Array.isArray(content)) return null
-
-  return (
-    <div style={{ lineHeight: 1.8, fontSize: '1.02rem', color: '#334155' }}>
-      {content.map((block) => {
-        if (block._type === 'image' && block.asset?.url) {
-          return (
-            <div key={block._key} style={{ margin: '24px 0', textAlign: 'center' }}>
-              <img src={block.asset.url} alt="Article visual" style={{ maxWidth: '100%', borderRadius: '8px' }} />
-            </div>
-          )
-        }
-
-        const rawText = block.children?.map((c) => c.text).join('') || ''
-        const linkedText = renderTextWithLinks(rawText, linksMap)
-
-        if (block.style === 'h2') {
-          return <h2 key={block._key} style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', marginTop: '28px', marginBottom: '12px' }}>{linkedText}</h2>
-        }
-        if (block.style === 'h3') {
-          return <h3 key={block._key} style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', marginTop: '22px', marginBottom: '10px' }}>{linkedText}</h3>
-        }
-        if (block.style === 'blockquote') {
-          return (
-            <blockquote key={block._key} style={{ borderLeft: '4px solid #10B981', paddingLeft: '14px', margin: '16px 0', fontStyle: 'italic', color: '#475569' }}>
-              {linkedText}
-            </blockquote>
-          )
-        }
-
-        return <p key={block._key} style={{ marginBottom: '16px' }}>{linkedText}</p>
-      })}
-    </div>
-  )
-}
-
-export default async function BlogDetailPage({ params }: { params: { slug: string } }) {
-  // Fetch blog, all phones (for inline auto-linking dictionary), top phones, and brands
-  const data = await client.fetch(`{
-    "blog": *[_type == "blog" && slug.current == $slug][0] {
-      _id,
-      title,
-      category,
-      readTime,
-      excerpt,
-      _createdAt,
-      "imageUrl": coalesce(featuredImage.asset->url, content[_type == "image"][0].asset->url),
-      content[]{
-        ...,
-        asset->{ url }
+  try {
+    const data = await client.fetch(`{
+      "phones": *[_type == "phone" && (brand == $slug || lower(brand) == lower($slug) || title match $slug)] | order(_createdAt desc)[0...100] {
+        _id,
+        title,
+        slug,
+        price,
+        has5G,
+        ptaApproved,
+        "imageUrl": coalesce(images[0].asset->url, image.asset->url)
+      },
+      "brandInfo": *[_type == "brand" && (slug.current == $slug || lower(name) == lower($slug))][0] {
+        name
       }
-    },
-    "allPhones": *[_type == "phone" && defined(slug.current)] {
-      title,
-      slug
-    },
-    "topPhones": *[_type == "phone"] | order(_createdAt desc)[0...5] {
-      _id,
-      title,
-      slug,
-      price,
-      has5G,
-      "imageUrl": coalesce(images[0].asset->url, image.asset->url)
-    },
-    "brands": *[_type == "brand"] | order(_createdAt asc) {
-      name,
-      slug,
-      "logoUrl": logo.asset->url
-    }
-  }`, { slug: params.slug })
+    }`, { slug })
 
-  const blog: BlogArticle | null = data?.blog || null
-  const topPhones: Phone[] = data?.topPhones || []
-  const brands: BrandItem[] = data?.brands || []
-
-  if (!blog) {
-    notFound()
-  }
-
-  // Build the inline auto-link dictionary from phone titles and brand names
-  const linksMap: { keyword: string; url: string }[] = []
-  
-  if (data?.allPhones) {
-    data.allPhones.forEach((p: any) => {
-      if (p.title && p.slug?.current) {
-        linksMap.push({ keyword: p.title, url: `/phone/${p.slug.current}` })
+    if (data) {
+      phones = data.phones || []
+      if (data.brandInfo?.name) {
+        brandName = data.brandInfo.name
       }
-    })
+    }
+  } catch (error) {
+    console.error("Brand fetch failed:", error)
   }
-
-  brands.forEach((b: any) => {
-    const brandSlug = (typeof b.slug === 'object' ? b.slug?.current : b.slug) || b.name.toLowerCase()
-    linksMap.push({ keyword: b.name, url: `/brand/${brandSlug}` })
-  })
-
-  DEFAULT_BRANDS.forEach((b) => {
-    linksMap.push({ keyword: b.name, url: `/brand/${b.slug}` })
-  })
-
-  const sanityBrandNames = new Set(brands.map((b) => b.name.toLowerCase()))
-  const combinedBrands = [
-    ...brands.map((b) => ({
-      name: b.name,
-      slug: (typeof b.slug === 'object' ? b.slug?.current : b.slug) || b.name.toLowerCase().replace(/\s+/g, '-'),
-      logo: b.logoUrl || ''
-    })),
-    ...DEFAULT_BRANDS.filter((b) => !sanityBrandNames.has(b.name.toLowerCase()))
-  ].slice(0, 10)
 
   return (
     <div style={{ backgroundColor: '#F8FAFC', minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#0F172A', overflowX: 'hidden' }}>
@@ -240,7 +85,6 @@ export default async function BlogDetailPage({ params }: { params: { slug: strin
 
       <input type="checkbox" id="nav-toggle" />
       
-      {/* Sidebar Drawer */}
       <aside className="sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
           <span style={{ color: '#FFF', fontSize: '1.3rem', fontWeight: 800 }}>Navigation</span>
@@ -250,14 +94,12 @@ export default async function BlogDetailPage({ params }: { params: { slug: strin
         <Link href="/brand/samsung" className="sidebar-link">Samsung Phones</Link>
         <Link href="/brand/apple" className="sidebar-link">Apple iPhones</Link>
         <Link href="/brand/vivo" className="sidebar-link">Vivo Mobiles</Link>
-        <Link href="/price/under-50000" className="sidebar-link">Phones Under Rs. 50,000</Link>
         <Link href="/blog" className="sidebar-link">Blogs</Link>
         <Link href="/news" className="sidebar-link">5G News</Link>
         <Link href="/contact" className="sidebar-link">Contact Us</Link>
       </aside>
       <label htmlFor="nav-toggle" className="overlay"></label>
 
-      {/* Header */}
       <header style={{ backgroundColor: '#0F172A', padding: '14px 16px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '14px' }}>
           <label htmlFor="nav-toggle" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '5px', padding: '4px' }}>
@@ -275,141 +117,57 @@ export default async function BlogDetailPage({ params }: { params: { slug: strin
         </div>
       </header>
 
-      {/* Main Container */}
       <main style={{ maxWidth: '900px', margin: '0 auto', padding: '16px 14px 40px' }}>
         
-        {/* Breadcrumbs */}
         <div style={{ fontSize: '0.85rem', color: '#64748B', marginBottom: '16px' }}>
-          <Link href="/" style={{ color: '#0284C7', textDecoration: 'none' }}>Home</Link> &gt;{' '}
-          <Link href="/blog" style={{ color: '#0284C7', textDecoration: 'none' }}>Blogs</Link> &gt;{' '}
-          <span>{blog.title}</span>
+          <Link href="/" style={{ color: '#0284C7', textDecoration: 'none' }}>Home</Link> &gt; <span>{brandName} 5G Mobiles</span>
         </div>
 
-        {/* Article Body */}
-        <article style={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px 16px', marginBottom: '32px' }}>
-          {blog.category && (
-            <span style={{ display: 'inline-block', backgroundColor: '#DCFCE7', color: '#15803D', fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '4px', marginBottom: '10px', textTransform: 'uppercase' }}>
-              {blog.category}
-            </span>
-          )}
-
-          <h1 style={{ fontSize: '1.65rem', fontWeight: 900, lineHeight: 1.3, color: '#0F172A', margin: '0 0 12px' }}>
-            {blog.title}
+        <div style={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '20px 16px', marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0F172A', margin: '0 0 6px' }}>
+            {brandName} 5G Mobile Price in Pakistan
           </h1>
+          <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748B' }}>
+            Browse official specifications, retail market prices, and PTA approval status for all {brandName} smartphones.
+          </p>
+        </div>
 
-          <div style={{ fontSize: '0.82rem', color: '#64748B', marginBottom: '20px', display: 'flex', gap: '14px', alignItems: 'center' }}>
-            <span>📅 {new Date(blog._createdAt).toLocaleDateString('en-PK', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-            {blog.readTime && <span>⏱️ {blog.readTime}</span>}
-          </div>
-
-          {blog.imageUrl && (
-            <div style={{ width: '100%', borderRadius: '8px', overflow: 'hidden', marginBottom: '22px', maxHeight: '420px', backgroundColor: '#F1F5F9' }}>
-              <img src={blog.imageUrl} alt={blog.title} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} />
-            </div>
-          )}
-
-          {blog.excerpt && (
-            <p style={{ fontSize: '1.05rem', fontWeight: 600, color: '#334155', borderLeft: '3px solid #10B981', paddingLeft: '12px', marginBottom: '24px' }}>
-              {blog.excerpt}
-            </p>
-          )}
-
-          {/* Rendered content with automated inline keyword links */}
-          <RenderPortableText content={blog.content} linksMap={linksMap} />
-        </article>
-
-        {/* Brands List */}
         <section style={{ marginBottom: '36px' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 4px' }}>Popular 5G Brands</h2>
-          <p style={{ margin: '0 0 14px', color: '#64748B', fontSize: '0.85rem' }}>Explore smartphones by your favorite brand</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-            {combinedBrands.map((brand) => (
-              <Link key={brand.slug} href={`/brand/${brand.slug}`} style={{ textDecoration: 'none' }}>
-                <div style={{ backgroundColor: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '74px' }}>
-                  <div style={{ height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                    {brand.logo ? (
-                      <img src={brand.logo} alt={`${brand.name} logo`} style={{ maxHeight: '20px', maxWidth: '24px', objectFit: 'contain' }} />
-                    ) : (
-                      <span style={{ fontWeight: 800, fontSize: '0.75rem', color: '#0F172A' }}>{brand.name.slice(0, 2).toUpperCase()}</span>
-                    )}
-                  </div>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#1E293B', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', padding: '0 2px' }}>
-                    {brand.name}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* Top 5 Most Visited Mobiles */}
-        <section style={{ marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 14px' }}>Top 5 Most Visited Mobiles</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {topPhones.map((phone, idx) => {
-              const phoneUrl = phone.slug?.current ? `/phone/${phone.slug.current}` : '#'
-              return (
-                <Link key={phone._id} href={phoneUrl} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{ backgroundColor: '#FFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#94A3B8', width: '22px' }}>#{idx + 1}</div>
-                    <div style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderRadius: '6px', flexShrink: 0 }}>
-                      {phone.imageUrl ? (
-                        <img src={phone.imageUrl} alt={phone.title} style={{ maxHeight: '45px', maxWidth: '45px', objectFit: 'contain' }} />
-                      ) : (
-                        <span style={{ fontSize: '0.65rem', color: '#94A3B8' }}>5G</span>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h4 style={{ margin: '0 0 3px', fontSize: '0.88rem', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {phones.length === 0 ? (
+            <div style={{ backgroundColor: '#FFF', borderRadius: '10px', border: '1px solid #E2E8F0', padding: '30px', textAlign: 'center' }}>
+              <p style={{ color: '#64748B', margin: 0 }}>No {brandName} models found in the database yet.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              {phones.map((phone) => {
+                const phoneUrl = phone.slug?.current ? `/phone/${phone.slug.current}` : '#'
+                return (
+                  <Link key={phone._id} href={phoneUrl} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div style={{ backgroundColor: '#FFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', height: '100%' }}>
+                      <div style={{ width: '100%', height: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderRadius: '6px', marginBottom: '8px' }}>
+                        {phone.imageUrl ? (
+                          <img src={phone.imageUrl} alt={phone.title} style={{ maxHeight: '80px', maxWidth: '100%', objectFit: 'contain' }} />
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>5G Mobile</span>
+                        )}
+                      </div>
+                      <h3 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0F172A', margin: '0 0 4px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3, width: '100%' }}>
                         {phone.title}
-                      </h4>
-                      <div style={{ fontSize: '0.72rem', color: phone.has5G ? '#15803D' : '#64748B', fontWeight: 600 }}>
-                        {phone.has5G ? '5G Ready' : '4G Phone'}
+                      </h3>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#10B981', marginTop: 'auto' }}>
+                        {phone.price ? `Rs. ${phone.price.toLocaleString()}` : 'Check Price'}
                       </div>
                     </div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#10B981', flexShrink: 0 }}>
-                      {phone.price ? `Rs. ${phone.phone?.price ? phone.phone.price.toLocaleString() : phone.price.toLocaleString()}` : 'Check Price'}
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </section>
 
       </main>
 
-      {/* Footer */}
       <footer style={{ backgroundColor: '#0F172A', color: '#94A3B8', padding: '40px 16px', marginTop: '40px' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', borderBottom: '1px solid #1E293B', paddingBottom: '32px', marginBottom: '24px' }}>
-          <div style={{ gridColumn: 'span 2' }}>
-            <span style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.5px', display: 'block', marginBottom: '10px' }}>
-              <span style={{ color: '#FFFFFF' }}>5G</span>
-              <span style={{ color: '#10B981' }}>Mobile</span>
-              <span style={{ color: '#FFFFFF', fontWeight: 400 }}>.pk</span>
-            </span>
-            <p style={{ fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
-              Pakistan's most trusted directory for 5G smartphone prices, daily market updates, and official PTA tax calculators.
-            </p>
-          </div>
-          <div>
-            <h4 style={{ color: '#FFF', fontSize: '1rem', marginBottom: '12px', fontWeight: 700 }}>Quick Links</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Link href="/about" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.85rem' }}>About Us</Link>
-              <Link href="/contact" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.85rem' }}>Contact Us</Link>
-              <Link href="/blog" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.85rem' }}>Mobile Blog</Link>
-              <Link href="/news" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.85rem' }}>5G News</Link>
-            </div>
-          </div>
-          <div>
-            <h4 style={{ color: '#FFF', fontSize: '1rem', marginBottom: '12px', fontWeight: 700 }}>Legal</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Link href="/privacy-policy" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.85rem' --> Privacy Policy</Link>
-              <Link href="/terms" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.85rem' }}>Terms & Conditions</Link>
-              <Link href="/disclaimer" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.85rem' }}>Disclaimer</Link>
-            </div>
-          </div>
-        </div>
         <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center', fontSize: '0.75rem' }}>
           &copy; {new Date().getFullYear()} 5gmobile.pk. All rights reserved.
         </div>

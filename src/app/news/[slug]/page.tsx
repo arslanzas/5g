@@ -12,7 +12,7 @@ const client = createClient({
   useCdn: false,
 })
 
-// Dynamic SEO for Google Discover
+// Dynamic SEO Metadata for Google Discover & Search
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const data = await client.fetch(`*[_type == "news" && slug.current == $slug][0]{
     title,
@@ -23,12 +23,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!data) return {}
 
   return {
-    title: `${data.title} | 5G News Pakistan`,
+    title: `${data.title} | 5gmobile.pk`,
     description: data.snippet,
     robots: {
       index: true,
       follow: true,
-      'max-image-preview': 'large', // CRITICAL FOR GOOGLE DISCOVER
+      'max-image-preview': 'large',
     },
     openGraph: {
       images: data.imageUrl ? [{ url: data.imageUrl }] : [],
@@ -40,6 +40,7 @@ interface BlockChild {
   _key: string
   _type: string
   text?: string
+  marks?: string[]
 }
 
 interface ContentBlock {
@@ -84,11 +85,35 @@ const DEFAULT_BRANDS = [
   { name: 'Realme', slug: 'realme', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/realme.svg' },
   { name: 'Infinix', slug: 'infinix', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e0/Infinix_wordmark.svg' },
   { name: 'Tecno', slug: 'tecno', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Tecno_Mobile_logo.svg' },
-  { name: 'Pixel', slug: 'google-pixel', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/google.svg' },
-  { name: 'Nothing', slug: 'nothing', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/nothing.svg' },
 ]
 
-function RenderPortableText({ content }: { content?: ContentBlock[] }) {
+// Smart Inline Auto-Linker: Converts matching keywords in news text into clickable hyperlinks
+function renderTextWithLinks(text: string, linksMap: { keyword: string; url: string }[]) {
+  if (!linksMap || linksMap.length === 0) return text
+
+  const sortedLinks = [...linksMap].sort((a, b) => b.keyword.length - a.keyword.length)
+  const escapedKeywords = sortedLinks.map(l => l.keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
+  
+  if (escapedKeywords.length === 0) return text
+
+  const regex = new RegExp(`(${escapedKeywords.join('|')})`, 'gi')
+  const parts = text.split(regex)
+
+  return parts.map((part, i) => {
+    const matchedLink = sortedLinks.find(l => l.keyword.toLowerCase() === part.toLowerCase())
+    if (matchedLink) {
+      return (
+        <Link key={i} href={matchedLink.url} style={{ color: '#0284C7', fontWeight: 600, textDecoration: 'underline' }}>
+          {part}
+        </Link>
+      )
+    }
+    return part
+  })
+}
+
+// Portable Text Renderer with Inline Auto-Linking
+function RenderPortableText({ content, linksMap }: { content?: ContentBlock[]; linksMap: { keyword: string; url: string }[] }) {
   if (!content || !Array.isArray(content)) return null
 
   return (
@@ -102,21 +127,31 @@ function RenderPortableText({ content }: { content?: ContentBlock[] }) {
           )
         }
 
-        const text = block.children?.map((c) => c.text).join('') || ''
+        const rawText = block.children?.map((c) => c.text).join('') || ''
+        const linkedText = renderTextWithLinks(rawText, linksMap)
 
         if (block.style === 'h2') {
-          return <h2 key={block._key} style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', marginTop: '28px', marginBottom: '12px' }}>{text}</h2>
+          return <h2 key={block._key} style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', marginTop: '28px', marginBottom: '12px' }}>{linkedText}</h2>
         }
         if (block.style === 'h3') {
-          return <h3 key={block._key} style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', marginTop: '22px', marginBottom: '10px' }}>{text}</h3>
+          return <h3 key={block._key} style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', marginTop: '22px', marginBottom: '10px' }}>{linkedText}</h3>
         }
-        return <p key={block._key} style={{ marginBottom: '16px' }}>{text}</p>
+        if (block.style === 'blockquote') {
+          return (
+            <blockquote key={block._key} style={{ borderLeft: '4px solid #10B981', paddingLeft: '14px', margin: '16px 0', fontStyle: 'italic', color: '#475569' }}>
+              {linkedText}
+            </blockquote>
+          )
+        }
+
+        return <p key={block._key} style={{ marginBottom: '16px' }}>{linkedText}</p>
       })}
     </div>
   )
 }
 
 export default async function NewsDetailPage({ params }: { params: { slug: string } }) {
+  // Fetch news, all phones (for dictionary), top phones, and brands
   const data = await client.fetch(`{
     "news": *[_type == "news" && slug.current == $slug][0] {
       _id,
@@ -129,6 +164,10 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
         ...,
         asset->{ url }
       }
+    },
+    "allPhones": *[_type == "phone" && defined(slug.current)] {
+      title,
+      slug
     },
     "topPhones": *[_type == "phone"] | order(_createdAt desc)[0...5] {
       _id,
@@ -152,6 +191,26 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
   if (!news) {
     notFound()
   }
+
+  // Build the inline auto-link dictionary
+  const linksMap: { keyword: string; url: string }[] = []
+
+  if (data?.allPhones) {
+    data.allPhones.forEach((p: any) => {
+      if (p.title && p.slug?.current) {
+        linksMap.push({ keyword: p.title, url: `/phone/${p.slug.current}` })
+      }
+    })
+  }
+
+  brands.forEach((b: any) => {
+    const brandSlug = (typeof b.slug === 'object' ? b.slug?.current : b.slug) || b.name.toLowerCase()
+    linksMap.push({ keyword: b.name, url: `/brand/${brandSlug}` })
+  })
+
+  DEFAULT_BRANDS.forEach((b) => {
+    linksMap.push({ keyword: b.name, url: `/brand/${b.slug}` })
+  })
 
   const sanityBrandNames = new Set(brands.map((b) => b.name.toLowerCase()))
   const combinedBrands = [
@@ -178,7 +237,7 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
 
       <input type="checkbox" id="nav-toggle" />
       
-      {/* Sidebar */}
+      {/* Sidebar Drawer */}
       <aside className="sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
           <span style={{ color: '#FFF', fontSize: '1.3rem', fontWeight: 800 }}>Navigation</span>
@@ -188,7 +247,6 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
         <Link href="/brand/samsung" className="sidebar-link">Samsung Phones</Link>
         <Link href="/brand/apple" className="sidebar-link">Apple iPhones</Link>
         <Link href="/brand/vivo" className="sidebar-link">Vivo Mobiles</Link>
-        <Link href="/brand/infinix" className="sidebar-link">Infinix Mobiles</Link>
         <Link href="/price/under-50000" className="sidebar-link">Phones Under Rs. 50,000</Link>
         <Link href="/blog" className="sidebar-link">Blogs</Link>
         <Link href="/news" className="sidebar-link">5G News</Link>
@@ -250,7 +308,8 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
             </p>
           )}
 
-          <RenderPortableText content={news.content} />
+          {/* Rendered content with automated inline keyword links */}
+          <RenderPortableText content={news.content} linksMap={linksMap} />
         </article>
 
         {/* Brands List */}

@@ -1,24 +1,8 @@
-export const dynamic = 'force-dynamic'
+'use client'
 
+import { useState, useEffect } from 'react'
 import { createClient } from 'next-sanity'
 import Link from 'next/link'
-
-export const metadata = {
-  title: 'Best 5G Mobile in Pakistan 2026 | Compare Prices & Specs',
-  description: 'Find the latest 5G mobile price in Pakistan. Compare budget 5G phones under 30,000, 40,000, and 50,000 PKR with official PTA approval status and reviews.',
-  keywords: [
-    '5g mobile price in pakistan', 
-    'best 5g mobile in pakistan', 
-    '5g mobile price in pakistan under 50000', 
-    '5g mobile price in pakistan under 40000', 
-    '5g mobile price in pakistan under 30000',
-    'samsung 5g mobile price in pakistan',
-    'vivo 5g mobile price in pakistan',
-    'infinix 5g mobile price in pakistan',
-    'oppo 5g mobile price in pakistan',
-    'apple iphone 5g price in pakistan'
-  ],
-}
 
 const client = createClient({
   projectId: 'e1h3j61w',
@@ -83,75 +67,97 @@ const DEFAULT_BRANDS = [
   { name: 'Nothing', slug: 'nothing', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/nothing.svg' },
 ]
 
-export default async function HomePage() {
-  let phones: Phone[] = []
-  let banner: Banner | null = null
-  let brands: BrandItem[] = []
-  let latestNews: NewsItem[] = []
-  let featuredNews: NewsItem[] = []
-  let blogs: BlogItem[] = []
-  
-  try {
-    const data = await client.fetch(`{
-      "phones": *[_type == "phone"] | order(_createdAt desc)[0...100] {
-        _id,
-        title,
-        slug,
-        price,
-        has5G,
-        ptaApproved,
-        "imageUrl": coalesce(images[0].asset->url, image.asset->url)
-      },
-      "banner": *[_type == "banner" && isActive == true][0] {
-        _id,
-        alertText,
-        linkUrl
-      },
-      "brands": *[_type == "brand"] | order(_createdAt asc) {
-        _id,
-        name,
-        slug,
-        "logoUrl": logo.asset->url
-      },
-      "latestNews": *[_type == "news"] | order(publishedAt desc, _createdAt desc)[0...10] {
-        _id,
-        title,
-        slug,
-        publishedAt,
-        snippet,
-        "imageUrl": mainImage.asset->url
-      },
-      "featuredNews": *[_type == "news" && isFeatured == true] | order(publishedAt desc, _createdAt desc)[0...10] {
-        _id,
-        title,
-        slug,
-        snippet,
-        "imageUrl": mainImage.asset->url
-      },
-      "blogs": *[_type == "blog"] | order(_createdAt desc)[0...10] {
-        _id,
-        title,
-        slug,
-        category,
-        excerpt,
-        readTime,
-        "imageUrl": featuredImage.asset->url
+export default function HomePage() {
+  const [phones, setPhones] = useState<Phone[]>([])
+  const [banner, setBanner] = useState<Banner | null>(null)
+  const [brands, setBrands] = useState<BrandItem[]>([])
+  const [latestNews, setLatestNews] = useState<NewsItem[]>([])
+  const [featuredNews, setFeaturedNews] = useState<NewsItem[]>([])
+  const [blogs, setBlogs] = useState<BlogItem[]>([])
+
+  // Live Search States
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filteredPhones, setFilteredPhones] = useState<Phone[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const data = await client.fetch(`{
+          "phones": *[_type == "phone"] | order(_createdAt desc)[0...100] {
+            _id,
+            title,
+            slug,
+            price,
+            has5G,
+            ptaApproved,
+            "imageUrl": coalesce(images[0].asset->url, image.asset->url)
+          },
+          "banner": *[_type == "banner" && isActive == true][0] {
+            _id,
+            alertText,
+            linkUrl
+          },
+          "brands": *[_type == "brand"] | order(_createdAt asc) {
+            _id,
+            name,
+            slug,
+            "logoUrl": logo.asset->url
+          },
+          "latestNews": *[_type == "news"] | order(publishedAt desc, _createdAt desc)[0...10] {
+            _id,
+            title,
+            slug,
+            publishedAt,
+            snippet,
+            "imageUrl": mainImage.asset->url
+          },
+          "featuredNews": *[_type == "news" && isFeatured == true] | order(publishedAt desc, _createdAt desc)[0...10] {
+            _id,
+            title,
+            slug,
+            snippet,
+            "imageUrl": mainImage.asset->url
+          },
+          "blogs": *[_type == "blog"] | order(_createdAt desc)[0...10] {
+            _id,
+            title,
+            slug,
+            category,
+            excerpt,
+            readTime,
+            "imageUrl": featuredImage.asset->url
+          }
+        }`)
+
+        if (data) {
+          setPhones(data.phones || [])
+          setBanner(data.banner || null)
+          setBrands(data.brands || [])
+          setLatestNews(data.latestNews || [])
+          setFeaturedNews(data.featuredNews || [])
+          setBlogs(data.blogs || [])
+        }
+      } catch (error) {
+        console.error("Sanity dynamic fetch failed:", error)
       }
-    }`)
-
-    if (data) {
-      phones = data.phones || []
-      banner = data.banner || null
-      brands = data.brands || []
-      latestNews = data.latestNews || []
-      featuredNews = data.featuredNews || []
-      blogs = data.blogs || []
     }
-  } catch (error) {
-    console.error("Sanity dynamic fetch failed:", error)
-  }
+    fetchData()
+  }, [])
 
-  // Combine dynamic Sanity brands with defaults so the 5-column grid always stays clean and full
+  // Handle Live Typing Search
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredPhones([])
+      setIsSearching(false)
+    } else {
+      setIsSearching(true)
+      const query = searchQuery.toLowerCase()
+      const matches = phones.filter(p => p.title.toLowerCase().includes(query)).slice(0, 8)
+      setFilteredPhones(matches)
+    }
+  }, [searchQuery, phones])
+
   const sanityBrandNames = new Set(brands.map(b => b.name.toLowerCase()))
   const combinedBrands = [
     ...brands.map(b => ({
@@ -162,13 +168,11 @@ export default async function HomePage() {
     ...DEFAULT_BRANDS.filter(b => !sanityBrandNames.has(b.name.toLowerCase()))
   ].slice(0, 10)
 
-  // Use recent news if featured items are not specifically toggled yet
   const displayFeaturedNews = featuredNews.length > 0 ? featuredNews : latestNews
 
   return (
     <div style={{ backgroundColor: '#F8FAFC', minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#0F172A', overflowX: 'hidden', width: '100%', maxWidth: '100vw' }}>
       
-      {/* MOBILE EDGE-TO-EDGE RESET & PURE CSS DRAWER */}
       <style dangerouslySetInnerHTML={{__html: `
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; max-width: 100%; }
@@ -184,7 +188,6 @@ export default async function HomePage() {
 
       <input type="checkbox" id="nav-toggle" />
       
-      {/* Sidebar Drawer */}
       <aside className="sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
           <span style={{ color: '#FFF', fontSize: '1.3rem', fontWeight: 800 }}>Navigation</span>
@@ -206,7 +209,6 @@ export default async function HomePage() {
       </aside>
       <label htmlFor="nav-toggle" className="overlay"></label>
 
-      {/* Dynamic Announcement Banner from Sanity */}
       {banner?.alertText && (
         <div style={{ backgroundColor: '#10B981', color: '#FFFFFF', padding: '9px 14px', textAlign: 'center', fontSize: '0.84rem', fontWeight: 600 }}>
           {banner.linkUrl ? (
@@ -219,7 +221,6 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* Header */}
       <header style={{ backgroundColor: '#0F172A', padding: '14px 16px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '14px' }}>
           <label htmlFor="nav-toggle" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '5px', padding: '4px' }}>
@@ -237,22 +238,56 @@ export default async function HomePage() {
         </div>
       </header>
 
-      {/* Main Container */}
       <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '14px 12px', width: '100%' }}>
         
-        {/* Search Bar Section */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', width: '100%' }}>
-          <input 
-            type="text" 
-            placeholder="Search mobile, brand, or specs..." 
-            style={{ flex: 1, minWidth: 0, padding: '11px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.95rem', outline: 'none', backgroundColor: '#FFF' }}
-          />
-          <button style={{ backgroundColor: '#10B981', color: '#FFF', border: 'none', borderRadius: '8px', padding: '0 18px', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', flexShrink: 0 }}>
-            Search
-          </button>
+        {/* Live Search Bar Section with Dropdown */}
+        <div style={{ position: 'relative', marginBottom: '18px', width: '100%' }}>
+          <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search mobile, brand, or specs..." 
+              style={{ flex: 1, minWidth: 0, padding: '11px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.95rem', outline: 'none', backgroundColor: '#FFF' }}
+            />
+            <button style={{ backgroundColor: '#10B981', color: '#FFF', border: 'none', borderRadius: '8px', padding: '0 18px', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', flexShrink: 0 }}>
+              Search
+            </button>
+          </div>
+
+          {/* Live Search Dropdown Results */}
+          {isSearching && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#FFF', border: '1px solid #CBD5E1', borderRadius: '8px', marginTop: '4px', zIndex: 200, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '320px', overflowY: 'auto' }}>
+              {filteredPhones.length === 0 ? (
+                <div style={{ padding: '14px', textAlign: 'center', color: '#64748B', fontSize: '0.88rem' }}>
+                  No matching mobile phones found.
+                </div>
+              ) : (
+                filteredPhones.map((phone) => {
+                  const phoneUrl = phone.slug?.current ? `/phone/${phone.slug.current}` : '#'
+                  return (
+                    <Link key={phone._id} href={phoneUrl} onClick={() => setSearchQuery('')} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderBottom: '1px solid #F1F5F9' }}>
+                      <div style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {phone.imageUrl ? (
+                          <img src={phone.imageUrl} alt={phone.title} style={{ maxHeight: '36px', maxWidth: '36px', objectFit: 'contain' }} />
+                        ) : (
+                          <span style={{ fontSize: '0.6rem', color: '#94A3B8' }}>No Img</span>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: '0 0 2px', fontSize: '0.85rem', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{phone.title}</p>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10B981' }}>
+                          {phone.price ? `Rs. ${phone.price.toLocaleString()}` : 'Check Price'}
+                        </span>
+                      </div>
+                    </Link>
+                  )
+                })
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Latest 5G News (Under Search, Live from Sanity) */}
         <section style={{ marginBottom: '22px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#0F172A' }}>Latest 5G News</h3>
@@ -290,7 +325,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 5G Mobile Brands (5 Columns Grid, Live from Sanity + Defaults) */}
         <section style={{ marginBottom: '26px' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 2px' }}>5G Mobile</h2>
           <p style={{ margin: '0 0 14px', color: '#64748B', fontSize: '0.85rem' }}>5g mobiles brands</p>
@@ -315,7 +349,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Find Mobile by Price */}
         <section style={{ backgroundColor: '#FFF', padding: '16px', borderRadius: '10px', border: '1px solid #E2E8F0', marginBottom: '26px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
           <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 6px' }}>Lets find mobile by Price</h2>
           <p style={{ margin: '0 0 12px', fontSize: '0.85rem', color: '#64748B' }}>your price range from... to</p>
@@ -339,7 +372,6 @@ export default async function HomePage() {
           </button>
         </section>
 
-        {/* Latest 5G Phones (3 per row) */}
         <section style={{ marginBottom: '28px' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 14px' }}>Latest 5g phones</h2>
           
@@ -379,7 +411,6 @@ export default async function HomePage() {
           </button>
         </section>
 
-        {/* Blogs Section (Live from Sanity, 2 on screen) */}
         <section style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Latest Blogs</h2>
@@ -422,7 +453,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Feature 5G News Section (Live from Sanity, 2 on screen) */}
         <section style={{ marginBottom: '32px' }}>
           <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 10px' }}>Feature 5g news</h2>
           <div className="hide-scroll" style={{ display: 'flex', gap: '10px', overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: '6px' }}>
@@ -456,7 +486,6 @@ export default async function HomePage() {
 
         <hr style={{ border: 0, borderTop: '1px solid #E2E8F0', margin: '30px 0' }} />
 
-        {/* 1,500 Word Semantic SEO Guide */}
         <article style={{ backgroundColor: '#FFF', padding: '24px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', lineHeight: 1.8, fontSize: '0.95rem', color: '#334155' }}>
           
           <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0F172A', marginBottom: '16px' }}>
@@ -588,7 +617,6 @@ export default async function HomePage() {
         </article>
       </main>
 
-      {/* AdSense Ready Footer */}
       <footer style={{ backgroundColor: '#0F172A', color: '#94A3B8', padding: '40px 16px', marginTop: '40px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', borderBottom: '1px solid #1E293B', paddingBottom: '32px', marginBottom: '24px' }}>
           

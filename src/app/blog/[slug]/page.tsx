@@ -12,13 +12,20 @@ const client = createClient({
   useCdn: false,
 })
 
-// Dynamic SEO for Google Discover
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+// Universal params handler for Next.js build stability
+interface PageProps {
+  params: Promise<{ slug: string }> | { slug: string }
+}
+
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params
+  const slug = params?.slug
+
   const data = await client.fetch(`*[_type == "blog" && slug.current == $slug][0]{
     title,
     excerpt,
     "imageUrl": coalesce(featuredImage.asset->url, content[_type == "image"][0].asset->url)
-  }`, { slug: params.slug })
+  }`, { slug })
 
   if (!data) return {}
 
@@ -28,7 +35,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     robots: {
       index: true,
       follow: true,
-      'max-image-preview': 'large', // CRITICAL FOR GOOGLE DISCOVER
+      'max-image-preview': 'large',
     },
     openGraph: {
       images: data.imageUrl ? [{ url: data.imageUrl }] : [],
@@ -90,7 +97,33 @@ const DEFAULT_BRANDS = [
   { name: 'Nothing', slug: 'nothing', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/nothing.svg' },
 ]
 
-function RenderPortableText({ content }: { content?: ContentBlock[] }) {
+// Safe Inline Auto-Linker
+function renderTextWithLinks(text: string, linksMap: { keyword: string; url: string }[]) {
+  if (!text || !linksMap || linksMap.length === 0) return text
+
+  const sortedLinks = [...linksMap].sort((a, b) => b.keyword.length - a.keyword.length)
+  const uniqueKeywords = Array.from(new Set(sortedLinks.map(l => l.keyword)))
+  const escapedKeywords = uniqueKeywords.map(k => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
+  
+  if (escapedKeywords.length === 0) return text
+
+  const regex = new RegExp(`(${escapedKeywords.join('|')})`, 'gi')
+  const parts = text.split(regex)
+
+  return parts.map((part, i) => {
+    const matchedLink = sortedLinks.find(l => l.keyword.toLowerCase() === part.toLowerCase())
+    if (matchedLink) {
+      return (
+        <Link key={i} href={matchedLink.url} style={{ color: '#0284C7', fontWeight: 600, textDecoration: 'underline' }}>
+          {part}
+        </Link>
+      )
+    }
+    return part
+  })
+}
+
+function RenderPortableText({ content, linksMap }: { content?: ContentBlock[]; linksMap: { keyword: string; url: string }[] }) {
   if (!content || !Array.isArray(content)) return null
 
   return (
@@ -104,29 +137,33 @@ function RenderPortableText({ content }: { content?: ContentBlock[] }) {
           )
         }
 
-        const text = block.children?.map((c) => c.text).join('') || ''
+        const rawText = block.children?.map((c) => c.text).join('') || ''
+        const linkedText = renderTextWithLinks(rawText, linksMap)
 
         if (block.style === 'h2') {
-          return <h2 key={block._key} style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', marginTop: '28px', marginBottom: '12px' }}>{text}</h2>
+          return <h2 key={block._key} style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', marginTop: '28px', marginBottom: '12px' }}>{linkedText}</h2>
         }
         if (block.style === 'h3') {
-          return <h3 key={block._key} style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', marginTop: '22px', marginBottom: '10px' }}>{text}</h3>
+          return <h3 key={block._key} style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', marginTop: '22px', marginBottom: '10px' }}>{linkedText}</h3>
         }
         if (block.style === 'blockquote') {
           return (
             <blockquote key={block._key} style={{ borderLeft: '4px solid #10B981', paddingLeft: '14px', margin: '16px 0', fontStyle: 'italic', color: '#475569' }}>
-              {text}
+              {linkedText}
             </blockquote>
-          ) // <--- This was the typo that broke the build!
+          )
         }
 
-        return <p key={block._key} style={{ marginBottom: '16px' }}>{text}</p>
+        return <p key={block._key} style={{ marginBottom: '16px' }}>{linkedText}</p>
       })}
     </div>
   )
 }
 
-export default async function BlogDetailPage({ params }: { params: { slug: string } }) {
+export default async function BlogDetailPage(props: PageProps) {
+  const params = await props.params
+  const slug = params?.slug
+
   const data = await client.fetch(`{
     "blog": *[_type == "blog" && slug.current == $slug][0] {
       _id,
@@ -141,6 +178,10 @@ export default async function BlogDetailPage({ params }: { params: { slug: strin
         asset->{ url }
       }
     },
+    "allPhones": *[_type == "phone" && defined(slug.current)] {
+      title,
+      slug
+    },
     "topPhones": *[_type == "phone"] | order(_createdAt desc)[0...5] {
       _id,
       title,
@@ -154,7 +195,7 @@ export default async function BlogDetailPage({ params }: { params: { slug: strin
       slug,
       "logoUrl": logo.asset->url
     }
-  }`, { slug: params.slug })
+  }`, { slug })
 
   const blog: BlogArticle | null = data?.blog || null
   const topPhones: Phone[] = data?.topPhones || []
@@ -163,6 +204,24 @@ export default async function BlogDetailPage({ params }: { params: { slug: strin
   if (!blog) {
     notFound()
   }
+
+  const linksMap: { keyword: string; url: string }[] = []
+  if (data?.allPhones) {
+    data.allPhones.forEach((p: any) => {
+      if (p.title && p.slug?.current) {
+        linksMap.push({ keyword: p.title, url: `/phone/${p.slug.current}` })
+      }
+    })
+  }
+
+  brands.forEach((b: any) => {
+    const brandSlug = (typeof b.slug === 'object' ? b.slug?.current : b.slug) || b.name.toLowerCase()
+    linksMap.push({ keyword: b.name, url: `/brand/${brandSlug}` })
+  })
+
+  DEFAULT_BRANDS.forEach((b) => {
+    linksMap.push({ keyword: b.name, url: `/brand/${b.slug}` })
+  })
 
   const sanityBrandNames = new Set(brands.map((b) => b.name.toLowerCase()))
   const combinedBrands = [
@@ -189,17 +248,17 @@ export default async function BlogDetailPage({ params }: { params: { slug: strin
 
       <input type="checkbox" id="nav-toggle" />
       
-      {/* Sidebar */}
+      {/* Sidebar Drawer */}
       <aside className="sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
           <span style={{ color: '#FFF', fontSize: '1.3rem', fontWeight: 800 }}>Navigation</span>
           <label htmlFor="nav-toggle" style={{ color: '#FFF', fontSize: '2rem', cursor: 'pointer', lineHeight: 1 }}>&times;</label>
         </div>
         <Link href="/" className="sidebar-link">Home</Link>
+        <Link href="/brands" className="sidebar-link">All Brands</Link>
         <Link href="/brand/samsung" className="sidebar-link">Samsung Phones</Link>
         <Link href="/brand/apple" className="sidebar-link">Apple iPhones</Link>
         <Link href="/brand/vivo" className="sidebar-link">Vivo Mobiles</Link>
-        <Link href="/brand/infinix" className="sidebar-link">Infinix Mobiles</Link>
         <Link href="/price/under-50000" className="sidebar-link">Phones Under Rs. 50,000</Link>
         <Link href="/blog" className="sidebar-link">Blogs</Link>
         <Link href="/news" className="sidebar-link">5G News</Link>
@@ -264,7 +323,8 @@ export default async function BlogDetailPage({ params }: { params: { slug: strin
             </p>
           )}
 
-          <RenderPortableText content={blog.content} />
+          {/* Rendered content with automated inline keyword links */}
+          <RenderPortableText content={blog.content} linksMap={linksMap} />
         </article>
 
         {/* Brands List */}

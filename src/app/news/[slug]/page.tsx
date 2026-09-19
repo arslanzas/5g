@@ -12,7 +12,7 @@ const client = createClient({
   useCdn: false,
 })
 
-// Universal params handler for Next.js build stability on Hostinger
+// Universal params handler for Next.js build stability
 interface PageProps {
   params: Promise<{ slug: string }> | { slug: string }
 }
@@ -96,33 +96,8 @@ const DEFAULT_BRANDS = [
   { name: 'Nothing', slug: 'nothing', logo: 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/nothing.svg' },
 ]
 
-// Safe Inline Auto-Linker for News Text
-function renderTextWithLinks(text: string, linksMap: { keyword: string; url: string }[]) {
-  if (!text || !linksMap || linksMap.length === 0) return text
-
-  const sortedLinks = [...linksMap].sort((a, b) => b.keyword.length - a.keyword.length)
-  const uniqueKeywords = Array.from(new Set(sortedLinks.map(l => l.keyword)))
-  const escapedKeywords = uniqueKeywords.map(k => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
-  
-  if (escapedKeywords.length === 0) return text
-
-  const regex = new RegExp(`(${escapedKeywords.join('|')})`, 'gi')
-  const parts = text.split(regex)
-
-  return parts.map((part, i) => {
-    const matchedLink = sortedLinks.find(l => l.keyword.toLowerCase() === part.toLowerCase())
-    if (matchedLink) {
-      return (
-        <Link key={i} href={matchedLink.url} style={{ color: '#0284C7', fontWeight: 600, textDecoration: 'underline' }}>
-          {part}
-        </Link>
-      )
-    }
-    return part
-  })
-}
-
-function RenderPortableText({ content, linksMap }: { content?: ContentBlock[]; linksMap: { keyword: string; url: string }[] }) {
+// Standard Portable Text Renderer (Auto-Linking Removed)
+function RenderPortableText({ content }: { content?: ContentBlock[] }) {
   if (!content || !Array.isArray(content)) return null
 
   return (
@@ -137,23 +112,22 @@ function RenderPortableText({ content, linksMap }: { content?: ContentBlock[]; l
         }
 
         const rawText = block.children?.map((c) => c.text).join('') || ''
-        const linkedText = renderTextWithLinks(rawText, linksMap)
 
         if (block.style === 'h2') {
-          return <h2 key={block._key} style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', marginTop: '28px', marginBottom: '12px' }}>{linkedText}</h2>
+          return <h2 key={block._key} style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', marginTop: '28px', marginBottom: '12px' }}>{rawText}</h2>
         }
         if (block.style === 'h3') {
-          return <h3 key={block._key} style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', marginTop: '22px', marginBottom: '10px' }}>{linkedText}</h3>
+          return <h3 key={block._key} style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', marginTop: '22px', marginBottom: '10px' }}>{rawText}</h3>
         }
         if (block.style === 'blockquote') {
           return (
             <blockquote key={block._key} style={{ borderLeft: '4px solid #10B981', paddingLeft: '14px', margin: '16px 0', fontStyle: 'italic', color: '#475569' }}>
-              {linkedText}
+              {rawText}
             </blockquote>
           )
         }
 
-        return <p key={block._key} style={{ marginBottom: '16px' }}>{linkedText}</p>
+        return <p key={block._key} style={{ marginBottom: '16px' }}>{rawText}</p>
       })}
     </div>
   )
@@ -163,6 +137,7 @@ export default async function NewsDetailPage(props: PageProps) {
   const params = await props.params
   const slug = params?.slug
 
+  // Query optimized: allPhones removed since inline linking is disabled
   const data = await client.fetch(`{
     "news": *[_type == "news" && slug.current == $slug][0] {
       _id,
@@ -175,10 +150,6 @@ export default async function NewsDetailPage(props: PageProps) {
         ...,
         asset->{ url }
       }
-    },
-    "allPhones": *[_type == "phone" && defined(slug.current)] {
-      title,
-      slug
     },
     "topPhones": *[_type == "phone"] | order(_createdAt desc)[0...5] {
       _id,
@@ -202,25 +173,6 @@ export default async function NewsDetailPage(props: PageProps) {
   if (!news) {
     notFound()
   }
-
-  // Build dictionary for smart inline linking
-  const linksMap: { keyword: string; url: string }[] = []
-  if (data?.allPhones) {
-    data.allPhones.forEach((p: any) => {
-      if (p.title && p.slug?.current) {
-        linksMap.push({ keyword: p.title, url: `/phone/${p.slug.current}` })
-      }
-    })
-  }
-
-  brands.forEach((b: any) => {
-    const brandSlug = (typeof b.slug === 'object' ? b.slug?.current : b.slug) || b.name.toLowerCase()
-    linksMap.push({ keyword: b.name, url: `/brand/${brandSlug}` })
-  })
-
-  DEFAULT_BRANDS.forEach((b) => {
-    linksMap.push({ keyword: b.name, url: `/brand/${b.slug}` })
-  })
 
   const sanityBrandNames = new Set(brands.map((b) => b.name.toLowerCase()))
   const combinedBrands = [
@@ -319,8 +271,8 @@ export default async function NewsDetailPage(props: PageProps) {
             </p>
           )}
 
-          {/* Rendered content with automated inline keyword links */}
-          <RenderPortableText content={news.content} linksMap={linksMap} />
+          {/* Standard text rendering without auto-links */}
+          <RenderPortableText content={news.content} />
         </article>
 
         {/* Brands List */}

@@ -21,7 +21,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const slug = params?.slug
 
   return {
-    title: `Latest ${slug?.toUpperCase() || '5G'} Mobile Prices in Pakistan | 5gmobile.pk`,
+    title: `5G ${slug?.toUpperCase() || '5G'} Mobile Prices in Pakistan | 5gmobile.pk`,
     description: `Explore official prices, specifications, and PTA approval status for all ${slug || '5G'} smartphones in Pakistan.`,
     robots: { index: true, follow: true },
   }
